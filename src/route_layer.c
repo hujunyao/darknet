@@ -1,5 +1,5 @@
 #include "route_layer.h"
-#include "cuda.h"
+#include "opencl.h"
 #include "blas.h"
 
 #include <stdio.h>
@@ -31,14 +31,19 @@ route_layer make_route_layer(int batch, int n, int *input_layers, int *input_siz
     l.forward_gpu = forward_route_layer_gpu;
     l.backward_gpu = backward_route_layer_gpu;
 
-    l.delta_gpu =  cuda_make_array(l.delta, outputs*batch);
-    l.output_gpu = cuda_make_array(l.output, outputs*batch);
+    l.delta_gpu =  opencl_make_array(l.delta, outputs*batch);
+    l.output_gpu = opencl_make_array(l.output, outputs*batch);
     #endif
     return l;
 }
 
 void resize_route_layer(route_layer *l, network *net)
 {
+#ifdef GPU
+    opencl_free_gpu_only(l->output_gpu);
+    opencl_free_gpu_only(l->delta_gpu);
+#endif
+
     int i;
     layer first = net->layers[l->input_layers[0]];
     l->out_w = first.out_w;
@@ -63,10 +68,8 @@ void resize_route_layer(route_layer *l, network *net)
     l->output = realloc(l->output, l->outputs*l->batch*sizeof(float));
 
 #ifdef GPU
-    cuda_free(l->output_gpu);
-    cuda_free(l->delta_gpu);
-    l->output_gpu  = cuda_make_array(l->output, l->outputs*l->batch);
-    l->delta_gpu   = cuda_make_array(l->delta,  l->outputs*l->batch);
+    l->output_gpu  = opencl_make_array(l->output, l->outputs*l->batch);
+    l->delta_gpu   = opencl_make_array(l->delta,  l->outputs*l->batch);
 #endif
     
 }
@@ -108,10 +111,10 @@ void forward_route_layer_gpu(const route_layer l, network net)
     int offset = 0;
     for(i = 0; i < l.n; ++i){
         int index = l.input_layers[i];
-        float *input = net.layers[index].output_gpu;
+        cl_mem_ext input = net.layers[index].output_gpu;
         int input_size = l.input_sizes[i];
         for(j = 0; j < l.batch; ++j){
-            copy_gpu(input_size, input + j*input_size, 1, l.output_gpu + offset + j*l.outputs, 1);
+            copy_offset_gpu(input_size, input, j*input_size, 1, l.output_gpu, offset + j*l.outputs, 1);
         }
         offset += input_size;
     }
@@ -123,10 +126,10 @@ void backward_route_layer_gpu(const route_layer l, network net)
     int offset = 0;
     for(i = 0; i < l.n; ++i){
         int index = l.input_layers[i];
-        float *delta = net.layers[index].delta_gpu;
+        cl_mem_ext delta = net.layers[index].delta_gpu;
         int input_size = l.input_sizes[i];
         for(j = 0; j < l.batch; ++j){
-            axpy_gpu(input_size, 1, l.delta_gpu + offset + j*l.outputs, 1, delta + j*input_size, 1);
+            axpy_offset_gpu(input_size, 1, l.delta_gpu, offset + j*l.outputs, 1, delta, j*input_size, 1);
         }
         offset += input_size;
     }

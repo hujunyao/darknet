@@ -1,5 +1,5 @@
 #include "shortcut_layer.h"
-#include "cuda.h"
+#include "opencl.h"
 #include "blas.h"
 #include "activations.h"
 
@@ -32,14 +32,18 @@ layer make_shortcut_layer(int batch, int index, int w, int h, int c, int w2, int
     l.forward_gpu = forward_shortcut_layer_gpu;
     l.backward_gpu = backward_shortcut_layer_gpu;
 
-    l.delta_gpu =  cuda_make_array(l.delta, l.outputs*batch);
-    l.output_gpu = cuda_make_array(l.output, l.outputs*batch);
+    l.delta_gpu =  opencl_make_array(l.delta, l.outputs*batch);
+    l.output_gpu = opencl_make_array(l.output, l.outputs*batch);
     #endif
     return l;
 }
 
 void resize_shortcut_layer(layer *l, int w, int h)
 {
+#ifdef GPU
+    opencl_free_gpu_only(l->output_gpu);
+    opencl_free_gpu_only(l->delta_gpu);
+#endif
     assert(l->w == l->out_w);
     assert(l->h == l->out_h);
     l->w = l->out_w = w;
@@ -50,10 +54,8 @@ void resize_shortcut_layer(layer *l, int w, int h)
     l->output = realloc(l->output, l->outputs*l->batch*sizeof(float));
 
 #ifdef GPU
-    cuda_free(l->output_gpu);
-    cuda_free(l->delta_gpu);
-    l->output_gpu  = cuda_make_array(l->output, l->outputs*l->batch);
-    l->delta_gpu   = cuda_make_array(l->delta,  l->outputs*l->batch);
+    l->output_gpu  = opencl_make_array(l->output, l->outputs*l->batch);
+    l->delta_gpu   = opencl_make_array(l->delta,  l->outputs*l->batch);
 #endif
     
 }

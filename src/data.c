@@ -1,7 +1,7 @@
 #include "data.h"
 #include "utils.h"
 #include "image.h"
-#include "cuda.h"
+#include "opencl.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,15 +39,46 @@ char **get_random_paths_indexes(char **paths, int n, int m, int *indexes)
 }
 */
 
+static void permute_swap(char** paths, int i, int j) {
+    char* swap = paths[i]; paths[i] = paths[j]; paths[j] = swap;
+}
+
+static void permute_hash(char** paths, int n){
+  int p;
+  int m = n/2;
+  for(p = 0; p < m; ++p){
+      int i = rand()%n;
+      int j = rand()%n;
+      if (i == j) {
+          --p;
+          continue;
+      }
+      permute_swap(paths, i, j);
+  }
+}
+
+static int permute_last = 0;
+
+static char* permute_next(char** paths, int n) {
+    if (permute_last == 0) {
+        permute_hash(paths, n);
+    }
+    if (++permute_last == n) {
+        permute_last = 0;
+    }
+    return paths[permute_last];
+}
+
 char **get_random_paths(char **paths, int n, int m)
 {
     char **random_paths = calloc(n, sizeof(char*));
     int i;
     pthread_mutex_lock(&mutex);
     for(i = 0; i < n; ++i){
-        int index = rand()%m;
-        random_paths[i] = paths[index];
+        //int index = rand()%m;
+        //random_paths[i] = paths[index];
         //if(i == 0) printf("%s\n", paths[index]);
+        random_paths[i] = permute_next(paths, m);
     }
     pthread_mutex_unlock(&mutex);
     return random_paths;

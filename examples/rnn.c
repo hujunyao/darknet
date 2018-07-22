@@ -506,7 +506,7 @@ void vec_char_rnn(char *cfgfile, char *weightfile, char *seed)
 
         layer l = net->layers[0];
         #ifdef GPU
-        cuda_pull_array(l.output_gpu, l.output, l.outputs);
+        opencl_pull_array(l.output_gpu, l.output, l.outputs);
         #endif
         printf("%s", line);
         for(i = 0; i < l.outputs; ++i){

@@ -1,6 +1,6 @@
 #include "cost_layer.h"
 #include "utils.h"
-#include "cuda.h"
+#include "opencl.h"
 #include "blas.h"
 #include <math.h>
 #include <string.h>
@@ -59,8 +59,8 @@ cost_layer make_cost_layer(int batch, int inputs, COST_TYPE cost_type, float sca
     l.forward_gpu = forward_cost_layer_gpu;
     l.backward_gpu = backward_cost_layer_gpu;
 
-    l.delta_gpu = cuda_make_array(l.output, inputs*batch);
-    l.output_gpu = cuda_make_array(l.delta, inputs*batch);
+    l.delta_gpu = opencl_make_array(l.output, inputs*batch);
+    l.output_gpu = opencl_make_array(l.delta, inputs*batch);
     #endif
     return l;
 }
@@ -72,10 +72,10 @@ void resize_cost_layer(cost_layer *l, int inputs)
     l->delta = realloc(l->delta, inputs*l->batch*sizeof(float));
     l->output = realloc(l->output, inputs*l->batch*sizeof(float));
 #ifdef GPU
-    cuda_free(l->delta_gpu);
-    cuda_free(l->output_gpu);
-    l->delta_gpu = cuda_make_array(l->delta, inputs*l->batch);
-    l->output_gpu = cuda_make_array(l->output, inputs*l->batch);
+    opencl_free(l->delta_gpu);
+    opencl_free(l->output_gpu);
+    l->delta_gpu = opencl_make_array(l->delta, inputs*l->batch);
+    l->output_gpu = opencl_make_array(l->output, inputs*l->batch);
 #endif
 }
 
@@ -107,12 +107,12 @@ void backward_cost_layer(const cost_layer l, network net)
 
 void pull_cost_layer(cost_layer l)
 {
-    cuda_pull_array(l.delta_gpu, l.delta, l.batch*l.inputs);
+    opencl_pull_array(l.delta_gpu, l.delta, l.batch*l.inputs);
 }
 
 void push_cost_layer(cost_layer l)
 {
-    cuda_push_array(l.delta_gpu, l.delta, l.batch*l.inputs);
+    opencl_push_array(l.delta_gpu, l.delta, l.batch*l.inputs);
 }
 
 int float_abs_compare (const void * a, const void * b)
@@ -151,7 +151,7 @@ void forward_cost_layer_gpu(cost_layer l, network net)
     }
 
     if(l.ratio){
-        cuda_pull_array(l.delta_gpu, l.delta, l.batch*l.inputs);
+        opencl_pull_array(l.delta_gpu, l.delta, l.batch*l.inputs);
         qsort(l.delta, l.batch*l.inputs, sizeof(float), float_abs_compare);
         int n = (1-l.ratio) * l.batch*l.inputs;
         float thresh = l.delta[n];
@@ -164,7 +164,7 @@ void forward_cost_layer_gpu(cost_layer l, network net)
         supp_gpu(l.batch*l.inputs, l.thresh*1./l.inputs, l.delta_gpu, 1);
     }
 
-    cuda_pull_array(l.output_gpu, l.output, l.batch*l.inputs);
+    opencl_pull_array(l.output_gpu, l.output, l.batch*l.inputs);
     l.cost[0] = sum_array(l.output, l.batch*l.inputs);
 }
 

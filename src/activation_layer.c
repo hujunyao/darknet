@@ -1,6 +1,6 @@
 #include "activation_layer.h"
 #include "utils.h"
-#include "cuda.h"
+#include "opencl.h"
 #include "blas.h"
 #include "gemm.h"
 
@@ -27,8 +27,8 @@ layer make_activation_layer(int batch, int inputs, ACTIVATION activation)
     l.forward_gpu = forward_activation_layer_gpu;
     l.backward_gpu = backward_activation_layer_gpu;
 
-    l.output_gpu = cuda_make_array(l.output, inputs*batch);
-    l.delta_gpu = cuda_make_array(l.delta, inputs*batch);
+    l.output_gpu = opencl_make_array(l.output, inputs*batch);
+    l.delta_gpu = opencl_make_array(l.delta, inputs*batch);
 #endif
     l.activation = activation;
     fprintf(stderr, "Activation Layer: %d inputs\n", inputs);

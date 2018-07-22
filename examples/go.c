@@ -144,10 +144,10 @@ void train_go(char *cfgfile, char *weightfile, char *filename, int *gpus, int ng
     int seed = rand();
     for(i = 0; i < ngpus; ++i){
         srand(seed);
-#ifdef GPU
-        cuda_set_device(gpus[i]);
-#endif
         nets[i] = load_network(cfgfile, weightfile, clear);
+#ifdef GPU
+        nets[i]->gpu_index = gpus[i];
+#endif
         nets[i]->learning_rate *= ngpus;
     }
     network *net = nets[0];
@@ -174,7 +174,7 @@ void train_go(char *cfgfile, char *weightfile, char *filename, int *gpus, int ng
         if(ngpus == 1){
             loss = train_network(net, train);
         } else {
-            loss = train_networks(nets, ngpus, train, 10);
+            loss = train_networks(nets, ngpus, train, 10, gpus, ngpus);
         }
 #else
         loss = train_network(net, train);

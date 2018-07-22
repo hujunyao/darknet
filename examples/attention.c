@@ -66,10 +66,10 @@ void train_attention(char *datacfg, char *cfgfile, char *weightfile, int *gpus, 
     int seed = rand();
     for(i = 0; i < ngpus; ++i){
         srand(seed);
-#ifdef GPU
-        cuda_set_device(gpus[i]);
-#endif
         nets[i] = load_network(cfgfile, weightfile, clear);
+#ifdef GPU
+        nets[i]->gpu_index = gpus[i];
+#endif
         nets[i]->learning_rate *= ngpus;
     }
     srand(time(0));
@@ -166,7 +166,7 @@ void train_attention(char *datacfg, char *cfgfile, char *weightfile, int *gpus, 
         if (ngpus == 1) {
             closs = train_network(net, best);
         } else {
-            closs = train_networks(nets, ngpus, best, 4);
+            closs = train_networks(nets, ngpus, best, 4, gpus, ngpus);
         }
         #endif
         for (i = 0; i < divs*divs; ++i) {
@@ -189,7 +189,7 @@ void train_attention(char *datacfg, char *cfgfile, char *weightfile, int *gpus, 
         if (ngpus == 1) {
             aloss = train_network(net, resized);
         } else {
-            aloss = train_networks(nets, ngpus, resized, 4);
+            aloss = train_networks(nets, ngpus, resized, 4, gpus, ngpus);
         }
 #endif
         for(i = 0; i < divs*divs; ++i){

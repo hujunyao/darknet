@@ -20,10 +20,10 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     int i;
     for(i = 0; i < ngpus; ++i){
         srand(seed);
-#ifdef GPU
-        cuda_set_device(gpus[i]);
-#endif
         nets[i] = load_network(cfgfile, weightfile, clear);
+#ifdef GPU
+        nets[i]->gpu_index = gpus[i];
+#endif
         nets[i]->learning_rate *= ngpus;
     }
     srand(time(0));
@@ -117,7 +117,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         if(ngpus == 1){
             loss = train_network(net, train);
         } else {
-            loss = train_networks(nets, ngpus, train, 4);
+            loss = train_networks(nets, ngpus, train, 4, gpus, ngpus);
         }
 #else
         loss = train_network(net, train);

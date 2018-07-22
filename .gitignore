@@ -19,6 +19,13 @@ cfg/
 darknet
 .fuse*
 
+# CMake build #
+build/
+
+# CLion #
+cmake-build-debug/
+.idea/
+
 # OS Generated #
 .DS_Store*
 ehthumbs.db

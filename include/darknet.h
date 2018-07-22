@@ -9,16 +9,9 @@
 extern int gpu_index;
 
 #ifdef GPU
-    #define BLOCK 512
-
-    #include "cuda_runtime.h"
-    #include "curand.h"
-    #include "cublas_v2.h"
-
-    #ifdef CUDNN
-    #include "cudnn.h"
-    #endif
-#endif
+#include "opencl.h"
+#define BLOCK 256
+#endif // GPU
 
 #ifndef __cplusplus
     #ifdef OPENCV
@@ -331,92 +324,81 @@ struct layer{
     size_t workspace_size;
 
 #ifdef GPU
-    int *indexes_gpu;
+    cl_mem_ext indexes_gpu;
 
-    float *z_gpu;
-    float *r_gpu;
-    float *h_gpu;
+    cl_mem_ext z_gpu;
+    cl_mem_ext r_gpu;
+    cl_mem_ext h_gpu;
 
-    float *temp_gpu;
-    float *temp2_gpu;
-    float *temp3_gpu;
+    cl_mem_ext temp_gpu;
+    cl_mem_ext temp2_gpu;
+    cl_mem_ext temp3_gpu;
 
-    float *dh_gpu;
-    float *hh_gpu;
-    float *prev_cell_gpu;
-    float *cell_gpu;
-    float *f_gpu;
-    float *i_gpu;
-    float *g_gpu;
-    float *o_gpu;
-    float *c_gpu;
-    float *dc_gpu; 
+    cl_mem_ext dh_gpu;
+    cl_mem_ext hh_gpu;
+    cl_mem_ext prev_cell_gpu;
+    cl_mem_ext cell_gpu;
+    cl_mem_ext f_gpu;
+    cl_mem_ext i_gpu;
+    cl_mem_ext g_gpu;
+    cl_mem_ext o_gpu;
+    cl_mem_ext c_gpu;
+    cl_mem_ext dc_gpu;
 
-    float *m_gpu;
-    float *v_gpu;
-    float *bias_m_gpu;
-    float *scale_m_gpu;
-    float *bias_v_gpu;
-    float *scale_v_gpu;
+    cl_mem_ext m_gpu;
+    cl_mem_ext v_gpu;
+    cl_mem_ext bias_m_gpu;
+    cl_mem_ext scale_m_gpu;
+    cl_mem_ext bias_v_gpu;
+    cl_mem_ext scale_v_gpu;
 
-    float * combine_gpu;
-    float * combine_delta_gpu;
+    cl_mem_ext combine_gpu;
+    cl_mem_ext combine_delta_gpu;
 
-    float * prev_state_gpu;
-    float * forgot_state_gpu;
-    float * forgot_delta_gpu;
-    float * state_gpu;
-    float * state_delta_gpu;
-    float * gate_gpu;
-    float * gate_delta_gpu;
-    float * save_gpu;
-    float * save_delta_gpu;
-    float * concat_gpu;
-    float * concat_delta_gpu;
+    cl_mem_ext prev_state_gpu;
+    cl_mem_ext forgot_state_gpu;
+    cl_mem_ext forgot_delta_gpu;
+    cl_mem_ext state_gpu;
+    cl_mem_ext state_delta_gpu;
+    cl_mem_ext gate_gpu;
+    cl_mem_ext gate_delta_gpu;
+    cl_mem_ext save_gpu;
+    cl_mem_ext save_delta_gpu;
+    cl_mem_ext concat_gpu;
+    cl_mem_ext concat_delta_gpu;
 
-    float * binary_input_gpu;
-    float * binary_weights_gpu;
+    cl_mem_ext binary_input_gpu;
+    cl_mem_ext binary_weights_gpu;
 
-    float * mean_gpu;
-    float * variance_gpu;
+    cl_mem_ext mean_gpu;
+    cl_mem_ext variance_gpu;
 
-    float * rolling_mean_gpu;
-    float * rolling_variance_gpu;
+    cl_mem_ext rolling_mean_gpu;
+    cl_mem_ext rolling_variance_gpu;
 
-    float * variance_delta_gpu;
-    float * mean_delta_gpu;
+    cl_mem_ext variance_delta_gpu;
+    cl_mem_ext mean_delta_gpu;
 
-    float * x_gpu;
-    float * x_norm_gpu;
-    float * weights_gpu;
-    float * weight_updates_gpu;
-    float * weight_change_gpu;
+    cl_mem_ext x_gpu;
+    cl_mem_ext x_norm_gpu;
+    cl_mem_ext weights_gpu;
+    cl_mem_ext weight_updates_gpu;
+    cl_mem_ext weight_change_gpu;
 
-    float * biases_gpu;
-    float * bias_updates_gpu;
-    float * bias_change_gpu;
+    cl_mem_ext biases_gpu;
+    cl_mem_ext bias_updates_gpu;
+    cl_mem_ext bias_change_gpu;
 
-    float * scales_gpu;
-    float * scale_updates_gpu;
-    float * scale_change_gpu;
+    cl_mem_ext scales_gpu;
+    cl_mem_ext scale_updates_gpu;
+    cl_mem_ext scale_change_gpu;
 
-    float * output_gpu;
-    float * loss_gpu;
-    float * delta_gpu;
-    float * rand_gpu;
-    float * squared_gpu;
-    float * norms_gpu;
-#ifdef CUDNN
-    cudnnTensorDescriptor_t srcTensorDesc, dstTensorDesc;
-    cudnnTensorDescriptor_t dsrcTensorDesc, ddstTensorDesc;
-    cudnnTensorDescriptor_t normTensorDesc;
-    cudnnFilterDescriptor_t weightDesc;
-    cudnnFilterDescriptor_t dweightDesc;
-    cudnnConvolutionDescriptor_t convDesc;
-    cudnnConvolutionFwdAlgo_t fw_algo;
-    cudnnConvolutionBwdDataAlgo_t bd_algo;
-    cudnnConvolutionBwdFilterAlgo_t bf_algo;
-#endif
+    cl_mem_ext output_gpu;
+    cl_mem_ext loss_gpu;
+    cl_mem_ext delta_gpu;
+    cl_mem_ext rand_gpu;
+    cl_mem_ext squared_gpu;
+    cl_mem_ext norms_gpu;
 #endif
 };
 
@@ -486,10 +468,11 @@ typedef struct network{
     float clip;
 
 #ifdef GPU
-    float *input_gpu;
-    float *truth_gpu;
-    float *delta_gpu;
-    float *output_gpu;
+    cl_mem_ext input_gpu;
+    cl_mem_ext truth_gpu;
+    cl_mem_ext delta_gpu;
+    cl_mem_ext output_gpu;
+    cl_mem_ext workspace_gpu;
 #endif
 
 } network;
@@ -623,23 +606,27 @@ void softmax(float *input, int n, float temp, int stride, float *output);
 
 int best_3d_shift_r(image a, image b, int min, int max);
 #ifdef GPU
-void axpy_gpu(int N, float ALPHA, float * X, int INCX, float * Y, int INCY);
-void fill_gpu(int N, float ALPHA, float * X, int INCX);
-void scal_gpu(int N, float ALPHA, float * X, int INCX);
-void copy_gpu(int N, float * X, int INCX, float * Y, int INCY);
+void axpy_gpu(int N, float ALPHA, cl_mem_ext X, int INCX, cl_mem_ext Y, int INCY);
+void fill_offset_gpu(int N, float ALPHA, cl_mem_ext X, int OFFX, int INCX);
+void fill_gpu(int N, float ALPHA, cl_mem_ext X, int INCX);
+void scal_gpu(int N, float ALPHA, cl_mem_ext X, int INCX);
+void copy_gpu(int N, cl_mem_ext X, int INCX, cl_mem_ext Y, int INCY);
 
-void cuda_set_device(int n);
-void cuda_free(float *x_gpu);
-float *cuda_make_array(float *x, size_t n);
-void cuda_pull_array(float *x_gpu, float *x, size_t n);
-float cuda_mag_array(float *x_gpu, size_t n);
-void cuda_push_array(float *x_gpu, float *x, size_t n);
+void opencl_set_device(int n);
+void opencl_free(cl_mem_ext x_gpu);
+void opencl_free_gpu_only(cl_mem_ext x_gpu);
+cl_mem_ext opencl_make_array(float *x, size_t n);
+void opencl_pull_int_array(cl_mem_ext x_gpu, int *x, size_t n);
+void opencl_push_int_array(cl_mem_ext x_gpu, int *x, size_t n);
+void opencl_pull_array(cl_mem_ext x_gpu, float *x, size_t n);
+float opencl_mag_array(cl_mem_ext x_gpu, size_t n);
+void opencl_push_array(cl_mem_ext x_gpu, float *x, size_t n);
 
 void forward_network_gpu(network *net);
 void backward_network_gpu(network *net);
 void update_network_gpu(network *net);
 
-float train_networks(network **nets, int n, data d, int interval);
+float train_networks(network **nets, int n, data d, int interval, int* gpus, int ngpus);
 void sync_nets(network **nets, int n, int interval);
 void harmless_update_network_gpu(network *net);
 #endif
@@ -796,5 +783,23 @@ int *read_intlist(char *s, int *n, int d);
 size_t rand_size_t();
 float rand_normal();
 float rand_uniform(float min, float max);
+
+void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *filename, int top);
+void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh, char *outfile, int fullscreen);
+void run_yolo(int argc, char **argv);
+void run_detector(int argc, char **argv);
+void run_coco(int argc, char **argv);
+void run_captcha(int argc, char **argv);
+void run_nightmare(int argc, char **argv);
+void run_classifier(int argc, char **argv);
+void run_regressor(int argc, char **argv);
+void run_segmenter(int argc, char **argv);
+void run_char_rnn(int argc, char **argv);
+void run_tag(int argc, char **argv);
+void run_cifar(int argc, char **argv);
+void run_go(int argc, char **argv);
+void run_art(int argc, char **argv);
+void run_super(int argc, char **argv);
+void run_lsd(int argc, char **argv);
 
 #endif

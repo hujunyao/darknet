@@ -855,14 +855,15 @@ network *parse_network_cfg(char *filename)
     net->truth = calloc(net->truths*net->batch, sizeof(float));
 #ifdef GPU
     net->output_gpu = out.output_gpu;
-    net->input_gpu = cuda_make_array(net->input, net->inputs*net->batch);
-    net->truth_gpu = cuda_make_array(net->truth, net->truths*net->batch);
+    net->input_gpu = opencl_make_array(net->input, net->inputs*net->batch);
+    net->truth_gpu = opencl_make_array(net->truth, net->truths*net->batch);
 #endif
     if(workspace_size){
         //printf("%ld\n", workspace_size);
 #ifdef GPU
         if(gpu_index >= 0){
-            net->workspace = cuda_make_array(0, (workspace_size-1)/sizeof(float)+1);
+            net->workspace = calloc(1, workspace_size);
+            net->workspace_gpu = opencl_make_array(net->workspace, (workspace_size-1)/sizeof(float)+1);
         }else {
             net->workspace = calloc(1, workspace_size);
         }
@@ -993,7 +994,7 @@ void save_weights_upto(network *net, char *filename, int cutoff)
 {
 #ifdef GPU
     if(net->gpu_index >= 0){
-        cuda_set_device(net->gpu_index);
+        opencl_set_device(net->gpu_index);
     }
 #endif
     fprintf(stderr, "Saving weights to %s\n", filename);
@@ -1203,7 +1204,7 @@ void load_weights_upto(network *net, char *filename, int start, int cutoff)
 {
 #ifdef GPU
     if(net->gpu_index >= 0){
-        cuda_set_device(net->gpu_index);
+        opencl_set_device(net->gpu_index);
     }
 #endif
     fprintf(stderr, "Loading weights from %s...", filename);
